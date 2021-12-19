@@ -1,2 +1,5 @@
 # steam-cheevo-chewer
 detects steam achievements that might have been unlocked by cheating (e.g. with Steam Achievement Manager)
+
+How to obtain the Steam Web API Key:
+https://steamcommunity.com/dev/apikey
