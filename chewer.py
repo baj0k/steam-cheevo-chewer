@@ -19,95 +19,55 @@ reqargs = {
 'key':options.key
 }
 
-class Achievement:
-    def __init__(self, displayname, description, unlocktime ):
-        self.displayname = displayname
-        self.description = description
-        self.unlocktime = unlocktime
+# # Achievement class constructor
+# class Achievement:
+#     def __init__(self, displayname, description, unlocktime ):
+#         self.displayname = displayname
+#         self.description = description
+#         self.unlocktime = unlocktime
     
-    def createCheevo(self):
-        print("test")
+#     def createCheevo(self):
+#         print("test")
 
-class Game:
-    def __init__(self, appid, name, achievements):
-        self.appid = appid
-        self.name = name
-        self.achievements = achievements
+# # Game class constructor
+# class Game:
+#     def __init__(self, appid, name, achievement_df):
+#         self.appid = appid
+#         self.name = name
+#         self.achievement_df = achievement_df
 
-# cheevo1 = Achievement("", "")
-# print(cheevo1.id)
-# print(cheevo1.name) 
+#     def initCheevo(self, appid):
+#         print("test")
 
-# Get a list of AppIDs of games added to Steam user's library
-def getAppids():
-    r = requests.get('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1?include_appinfo=1', params=reqargs)
-    r_dict= r.json()
-    r_df = pd.DataFrame(r_dict['response']['games'])
-    return r_df
-
-# Get list of users achievements for an AppID
+# Gets users achievements data for a specific AppID
 def getCheevos(appid):
-    r = requests.get('https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/?appid=' + appid, params=reqargs)
-    r_dict= r.json()
-    r_df = pd.DataFrame(r_dict['playerstats']['achievements'])
-    return r_df
+    r1 = requests.get('https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/?appid=' + appid, params=reqargs)
+    r1_dict= r1.json()
+    r1_df = pd.DataFrame(r1_dict['playerstats']['achievements'])
+    filename = "C:/tmp/" + r1_dict['playerstats']['gameName'].replace(":", "").replace(" ", "_") + ".csv"
 
-# Get list of achievements metadata for an AppID
-def getCheevosData(appid):
-    r = requests.get('https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?appid=' + appid, params=reqargs)
-    r_dict = r.json()
-    r_df = pd.DataFrame(r_dict['game']['availableGameStats']['achievements'])
-    return r_df
+    r2 = requests.get('https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?appid=' + appid, params=reqargs)
+    r2_dict = r2.json()
+    r2_df = pd.DataFrame(r2_dict['game']['availableGameStats']['achievements'])
 
-# Merge achievements metadata with users achievements stats
-def mergeCheevosFrames(cheevos_df, cheevosData_df):
-    cheevos_df = cheevos_df.rename(columns = {'apiname':'name'})
-    cheevos_df = pd.merge(cheevos_df, cheevosData_df, how='outer', on='name')
-    print(cheevos_df)
+    # Merge data from two API requests into one dataframe
+    r1_df = r1_df.rename(columns = {'apiname':'name'})
+    cheevos_df = pd.merge(r1_df, r2_df, how='outer', on='name')
+    cheevos_df.to_csv(filename)
     return cheevos_df
 
+# Gets list of AppIDs present in Steam user's library
+r = requests.get('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1?include_appinfo=1', params=reqargs)
+r_dict= r.json()
+r_df = pd.DataFrame(r_dict['response']['games'])
 
-# Main execution
-appids_df = getAppids()
-cheevosList_df = getCheevos("10180")
-cheevosData_df = getCheevosData("10180")
-# print(appids_df)
-# print(cheevosList_df)
-# print(cheevosData_df)
+appids = []
+for i in r_dict['response']['games']:
+    appids.append(i['name'])
 
-# cheevosList_df.rename(columns = {'apiname':'name'})
-# print(cheevosList_df)
+# tmp dump
+# appids_df = getAppids() 
+# appids_df.to_csv("C:/tmp/appids.csv")
 
-mergeCheevosFrames(cheevosList_df, cheevosData_df)
-
-# Write AppID list to a file
-f = open("C:/tmp/appids.txt", "w")
-for line in appids_df:
-    f.write(line + "\n")
-f.close()
-
-# Write achievement list to a file
-f = open("C:/tmp/cheevos.txt", "w")
-for line in cheevosList_df:
-    f.write(str(line) + "\n")
-f.close()
-
-# Write achievement data to a file
-f = open("C:/tmp/cheevosData.txt", "w")
-for line in cheevosData_df:
-    f.write(str(line) + "\n")
-f.close()
-
-#open and read the file after the appending:
-# f = open("demofile3.txt", "r")
-# print(f.read()) 
-
-
-
-
-
-
-
-
-# for i in appids:
-#     getCheevos(str(i))
+# cheevos_df = getCheevos("10180")
+# cheevos_df.to_csv("C:/tmp/cheevos.csv")
