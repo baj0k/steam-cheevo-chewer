@@ -12,11 +12,14 @@ parser.add_option("-i", "--id",
 parser.add_option("-k", "--key",
                 action="store", dest="key", help="Steam Web API Key (https://steamcommunity.com/dev/apikey)")
 parser.add_option("-o", "--output",
-                action="store", dest="destination", help="Destination folder to which the output files will be saved")
+                action="store", dest="destination", help="Write output files to the folder specified. The default is /tmp")
 (options, args) = parser.parse_args()
 
-if not ( options.id and options.key and options.destination):
-    parser.error("All parameters are mandatory")
+if not (options.id and options.key):
+    parser.error("You need to specify both the Steam Web API key and Steam user 64-bit ID")
+
+if not (options.destination):
+    options.destination = "/tmp"
 
 reqargs = {
 'steamid':options.id,
@@ -45,7 +48,7 @@ def getCheevos(appid):
     filename = os.path.abspath(options.destination + '/' + re.sub('[:,.!?]', '', r1.json()['playerstats']['gameName'].replace(" ", "_")) + ".csv")
     print("Processing: " + filename)
     cheevos_df.to_csv(filename)
-    return
+    return cheevos_df
 
 
 if __name__ == '__main__':
@@ -57,5 +60,40 @@ if __name__ == '__main__':
     games_df.to_csv(options.destination + '/' + 'games.csv')
 
     # Generate an achievement data for each AppID
-    for appid in games_df['appid']:
-        getCheevos(str(appid))
+    # for appid in games_df['appid']:
+    #     cheevos_df = getCheevos(str(appid))
+
+
+
+    full_cheevos_df = getCheevos(str("10180"))
+    # partfull_cheevos_df = getCheevos(str("311690"))
+    # empty_cheevos_df = getCheevos(str("507490"))
+
+    full_achieved_df = full_cheevos_df.loc[full_cheevos_df['achieved'] == 1]
+    # partfull_achieved_df = partfull_cheevos_df.loc[partfull_cheevos_df['achieved'] == 1]
+    # empty_achieved_df = empty_cheevos_df.loc[empty_cheevos_df['achieved'] == 1]
+
+    
+    # print(full_achieved_df)
+    # print(partfull_achieved_df)
+    # print(empty_achieved_df)
+
+    # print(achieved_df.duplicated(subset=['unlocktime']).to_csv(index=False))
+
+    full_test_df = full_achieved_df.duplicated(subset=['unlocktime']).to_csv(index=False)
+    # partfull_test_df = partfull_achieved_df.duplicated(subset=['unlocktime'])
+    # empty_test_df = empty_achieved_df.duplicated(subset=['unlocktime']).to_csv(index=False)
+
+    print(full_test_df)
+    # print(partfull_test_df)
+    # print(empty_test_df)
+    
+
+
+    # for row in cheevos_df:
+    #     if (cheevos_df)
+    #     print(row)
+        
+    #     if (row['achieved'])
+    # print(cheevos_df['achieved'].to_csv(index=False))
+
