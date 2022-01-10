@@ -9,6 +9,8 @@ import os
 
 # Argument parsing
 parser = OptionParser(usage = "usage: %prog -i ID -k KEY -o DEST")
+parser.add_option("-a", "--appid",
+                action="store", dest="appid", type="string", help="Run the script against only a specific AppID instead of entire library")
 parser.add_option("-i", "--id",
                 action="store", dest="id", type="string", help="64-bit Steam ID")
 parser.add_option("-k", "--key",
@@ -17,8 +19,11 @@ parser.add_option("-o", "--output",
                 action="store", dest="destination", type="string", help="Write output files to the folder specified. The default is /tmp")
 (options, args) = parser.parse_args()
 
-if not (options.id and options.key):
-    parser.error("You need to specify both the Steam Web API key and Steam user 64-bit ID")
+if not (options.key):
+    parser.error("--key missing")
+
+if not (options.id or options.appid):
+    parser.error("--appid or --id missing. You need to specify either of these")
 
 if not (options.destination):
    options.destination = "/tmp/cheevos"
@@ -37,6 +42,7 @@ def getCheevos(appid):
         return 
 
     gameName = re.sub('[^a-zA-Z0-9 \n]', '', r1.json()['playerstats']['gameName'])
+    fileName = gameName + "-" + appid
 
     r1_df = pd.DataFrame(r1.json()['playerstats']['achievements'])
     r2 = session.get('https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?appid=' + appid, params=reqargs)
@@ -48,11 +54,11 @@ def getCheevos(appid):
 
     # Cache all achievement data
     print("Processing: " + gameName)
-    cheevos_df.to_csv(os.path.abspath(options.destination + '/cache/' + "Full_" + gameName.replace(" ", "_") + ".csv"))
+    cheevos_df.to_csv(os.path.abspath(options.destination + '/cache/' + "Full_" + fileName.replace(" ", "_") + ".csv"))
     
     # Create a csv of suspicious achievements
     cheevos_df = cheevos_df.loc[cheevos_df['achieved'] == 1]
-    suspicious_df = cheevos_df[cheevos_df.duplicated(['unlocktime'], keep=False)].sort_values(by=['unlocktime'])
+    suspicious_df = cheevos_df[cheevos_df.duplicated(['unlocktime'], keep=False)].sort_values(by=['unlocktime', 'displayName'])
 
     # Check for duplicated unlocktime values
     if 'description' in suspicious_df.columns: 
@@ -61,7 +67,7 @@ def getCheevos(appid):
         suspicious_df = suspicious_df[['displayName', 'unlocktime']]
 
     if not (suspicious_df.empty):
-        suspicious_df.to_csv(os.path.abspath(options.destination + "/" + gameName.replace(" ", "_") + ".csv"), header=None)
+        suspicious_df.to_csv(os.path.abspath(options.destination + "/" + fileName.replace(" ", "_") + ".csv"), header=None)
 
     return cheevos_df
 
@@ -79,5 +85,8 @@ if __name__ == '__main__':
     games_df.to_csv(options.destination + '/' + '!games.csv')
 
     # Generate an achievement data for each AppID
-    for appid in games_df['appid']:
-        cheevos_df = getCheevos(str(appid))
+    if (options.appid):
+        cheevos_df = getCheevos(str(options.appid))
+    else:
+        for appid in games_df['appid']:
+            cheevos_df = getCheevos(str(appid))
