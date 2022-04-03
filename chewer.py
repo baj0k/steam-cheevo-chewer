@@ -55,12 +55,12 @@ def getCheevos(appid):
     # Cache all achievement data
     print("Processing: " + gameName)
     cheevos_df.to_csv(os.path.abspath(options.destination + '/cache/' + "Full_" + fileName.replace(" ", "_") + ".csv"))
-    
-    # Create a csv of suspicious achievements
     cheevos_df = cheevos_df.loc[cheevos_df['achieved'] == 1]
-    suspicious_df = cheevos_df[cheevos_df.duplicated(['unlocktime'], keep=False)].sort_values(by=['unlocktime', 'displayName'])
 
     # Check for duplicated unlocktime values
+    suspicious_df = cheevos_df[cheevos_df.duplicated(['unlocktime'], keep=False)].sort_values(by=['unlocktime', 'displayName'])
+    #suspicious_df = cheevos_df[cheevos_df.duplicated(['unlocktime'], keep=False)].sort_values(by=['unlocktime'])
+
     if 'description' in suspicious_df.columns: 
         suspicious_df = suspicious_df[['displayName', 'unlocktime', 'description']]
     else:
