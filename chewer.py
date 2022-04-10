@@ -8,7 +8,7 @@ import re
 import os
 
 # Argument parsing
-parser = OptionParser(usage = "usage: %prog -i ID -k KEY -o DEST")
+parser = OptionParser(usage = "usage: %prog -i USER_ID -k API_KEY [-o DEST -a APPID]")
 parser.add_option("-a", "--appid",
                 action="store", dest="appid", type="string", help="Run the script against only a specific AppID instead of entire library")
 parser.add_option("-i", "--id",
@@ -23,7 +23,7 @@ if not (options.key):
     parser.error("--key missing")
 
 if not (options.id or options.appid):
-    parser.error("--appid or --id missing. You need to specify either of these")
+    parser.error("--appid or --id missing. Both arguments are mandatory")
 
 if not (options.destination):
    options.destination = "/tmp/cheevos"
