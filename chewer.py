@@ -6,6 +6,8 @@ import requests
 import json
 import re
 import os
+import glob
+import multiprocessing
 
 # Argument parsing
 parser = OptionParser(usage = "usage: %prog -i USER_ID -k API_KEY [-o DEST -a APPID]")
@@ -15,8 +17,6 @@ parser.add_option("-i", "--id",
                 action="store", dest="id", type="string", help="64-bit Steam ID")
 parser.add_option("-k", "--key",
                 action="store", dest="key", type="string", help="Steam Web API Key (https://steamcommunity.com/dev/apikey)")
-parser.add_option("-o", "--output",
-                action="store", dest="destination", type="string", help="Write output files to the folder specified. The default is /tmp")
 (options, args) = parser.parse_args()
 
 if not (options.key):
@@ -25,11 +25,11 @@ if not (options.key):
 if not (options.id or options.appid):
     parser.error("--appid or --id missing. Both arguments are mandatory")
 
-if not (options.destination):
-   options.destination = "/tmp/cheevos"
-
-if not (os.path.exists(options.destination + "/cache/")):
-   os.makedirs(options.destination + "/cache/")
+datadir = "data/" + options.id
+if not (os.path.exists(datadir)):
+   os.makedirs(datadir)
+   os.makedirs(datadir + "/Full")
+   os.makedirs(datadir + "/Sus")
 
 # Get user's achievements data for a specific AppID
 def getCheevos(appid):
@@ -52,9 +52,9 @@ def getCheevos(appid):
     r1_df = r1_df.rename(columns = {'apiname':'name'})
     cheevos_df = pd.merge(r1_df, r2_df, how='outer', on='name')
 
-    # Cache all achievement data
+    # Save full achievement data
     print("Processing: " + gameName)
-    cheevos_df.to_csv(os.path.abspath(options.destination + '/cache/' + "Full_" + fileName.replace(" ", "_") + ".csv"))
+    cheevos_df.to_csv(os.path.abspath(datadir + "/Full/" + fileName.replace(" ", "_") + ".csv"))
     cheevos_df = cheevos_df.loc[cheevos_df['achieved'] == 1]
 
     # Check for duplicated unlocktime values
@@ -66,11 +66,22 @@ def getCheevos(appid):
     else:
         suspicious_df = suspicious_df[['displayName', 'unlocktime']]
 
+    
+
+    # timestamp = 1642445213
+    # value = datetime.datetime.fromtimestamp(timestamp)
+    # print(f"{value:%Y-%m-%d %H:%M:%S}")
+
+
     if not (suspicious_df.empty):
-        suspicious_df.to_csv(os.path.abspath(options.destination + "/" + fileName.replace(" ", "_") + ".csv"), header=None)
+        suspicious_df.to_csv(os.path.abspath(datadir + "/Sus/" + fileName.replace(" ", "_") + ".csv"), header=None)
 
     return cheevos_df
 
+def mergeCsv(src, dst):
+    df_csv_concat = pd.concat([pd.read_csv(file) for file in glob.glob(src + '*.{}'.format('csv'))], ignore_index=True)
+    df_csv_concat.to_csv(os.path.abspath(dst + "/total.csv"))
+ 
 if __name__ == '__main__':
 
     # Create dataframe of AppIDs present in Steam user's library
@@ -82,11 +93,14 @@ if __name__ == '__main__':
     session = requests.Session()
     r = session.get('https://api.steampowered.com/IPlayerService/GetOwnedGames/v1?include_appinfo=1&include_played_free_games=1', params=reqargs)
     games_df = pd.DataFrame(r.json()['response']['games']).sort_values(by=['name'])
-    games_df.to_csv(options.destination + '/' + '!games.csv')
+    games_df.to_csv(datadir + '/games.csv')
 
     # Generate an achievement data for each AppID
     if (options.appid):
         cheevos_df = getCheevos(str(options.appid))
     else:
-        for appid in games_df['appid']:
-            cheevos_df = getCheevos(str(appid))
+        with multiprocessing.Pool() as pool:
+            for appid in games_df['appid']:
+                cheevos_df = getCheevos(str(appid))
+
+    mergeCsv(datadir + "/Sus/", datadir)
